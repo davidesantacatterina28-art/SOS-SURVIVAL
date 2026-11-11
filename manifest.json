@@ -1,0 +1,15 @@
+{
+  "name": "SOS Survival Offline",
+  "short_name": "SOS Survival",
+  "description": "Guida di sopravvivenza completa che funziona senza internet.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111815",
+  "theme_color": "#111815",
+  "lang": "it",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

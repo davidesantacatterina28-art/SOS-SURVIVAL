@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111815">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>SOS Survival Offline</title>
+<style>
+:root{--bg:#111815;--card:#1b2620;--card2:#243229;--txt:#eaf1ec;--mut:#9fb3a7;--acc:#f2b632;--red:#e5533d;--grn:#58c27d;--blu:#5aa9e6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:70px}
+header{position:sticky;top:0;z-index:5;background:#0b100d;padding:10px 14px;border-bottom:1px solid #2b3a31;display:flex;gap:10px;align-items:center}
+header h1{font-size:17px;margin:0;flex:1}
+header button{background:none;border:0;color:var(--acc);font-size:22px}
+main{padding:14px;max-width:820px;margin:auto}
+input[type=search],input[type=text],select,textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #33463a;background:var(--card);color:var(--txt);font-size:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.tile{background:var(--card);border:1px solid #2f4136;border-radius:14px;padding:16px 10px;text-align:center;color:var(--txt);font-size:15px;font-weight:600}
+.tile span{display:block;font-size:34px;margin-bottom:4px}
+.tile:active{background:var(--card2)}
+.sos{background:#3a1a15;border-color:var(--red)}
+.alert{background:#3a2f12;border-left:4px solid var(--acc);padding:10px 12px;border-radius:8px;margin:10px 0}
+.danger{background:#3a1a15;border-left:4px solid var(--red);padding:10px 12px;border-radius:8px;margin:10px 0}
+details{background:var(--card);border-radius:12px;margin:10px 0;border:1px solid #2f4136}
+summary{padding:14px;font-weight:600;cursor:pointer;list-style:none}
+summary::after{content:"＋";float:right;color:var(--acc)}
+details[open] summary::after{content:"－"}
+details>div{padding:0 14px 14px}
+h2{font-size:22px;margin:6px 0 4px}
+h3{font-size:16px;color:var(--acc);margin:14px 0 4px}
+ul,ol{padding-left:20px;margin:6px 0}
+li{margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{border-bottom:1px solid #2f4136;padding:6px 4px;text-align:left}
+.two{columns:2;column-gap:14px}
+.mono{font-family:ui-monospace,Menlo,monospace;letter-spacing:1px}
+.btn{background:var(--acc);color:#1a1405;border:0;border-radius:10px;padding:12px 16px;font-weight:700;font-size:15px;margin:4px 4px 4px 0}
+.btn.s{background:var(--card2);color:var(--txt)}
+.btn.r{background:var(--red);color:#fff}
+nav{position:fixed;bottom:0;left:0;right:0;background:#0b100d;border-top:1px solid #2b3a31;display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:10px 0;font-size:12px}
+nav button b{display:block;font-size:20px}
+nav button.on{color:var(--acc)}
+.pt{background:var(--card);border-radius:10px;padding:10px;margin:8px 0;display:flex;gap:10px;align-items:center}
+.pt div{flex:1}
+.pt small{color:var(--mut)}
+#flash{position:fixed;inset:0;background:#fff;z-index:50;display:none}
+.small{font-size:13px;color:var(--mut)}
+@media(min-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<header><button onclick="go('home')" aria-label="Home">⌂</button><h1 id="title">SOS Survival Offline</h1><button onclick="go('sos')" aria-label="SOS">🆘</button></header>
+<main id="app"></main>
+<nav>
+<button onclick="go('home')" data-n="home"><b>🏠</b>Home</button>
+<button onclick="go('mappa')" data-n="mappa"><b>🧭</b>Punti</button>
+<button onclick="go('medico')" data-n="medico"><b>✚</b>Medico</button>
+<button onclick="go('acqua')" data-n="acqua"><b>💧</b>Acqua</button>
+<button onclick="go('comm')" data-n="comm"><b>📻</b>Radio</button>
+</nav>
+<div id="flash"></div>
+
+<script>
+/* ====== CONTENUTI ====== */
+const S = {};
+
+S.sos = {i:'🆘',t:'Emergenza – parti da qui',h:`
+<div class="danger"><b>Numero unico di emergenza in tutta Europa: 112</b> (funziona anche senza SIM e spesso anche senza credito; con poca copertura prova a inviare un SMS).</div>
+<h2>Le prime decisioni (ordine di priorità)</h2>
+<ol>
+<li><b>Sicurezza:</b> allontanati dal pericolo immediato (fuoco, crolli, acqua alta, gas, traffico). Non diventare una seconda vittima.</li>
+<li><b>Respira e fermati (metodo STOP):</b> <i>Stop</i> – <i>Think</i> (pensa) – <i>Observe</i> (osserva) – <i>Plan</i> (pianifica). Il panico uccide più di molte situazioni.</li>
+<li><b>Regola del 3:</b> 3 minuti senza aria · 3 ore senza riparo (freddo/caldo estremo) · 3 giorni senza acqua · 3 settimane senza cibo.</li>
+<li>Cura le ferite gravi (emorragie, respirazione) → riparo → acqua → segnalazione → cibo.</li>
+<li>Se sei disperso: di solito è meglio <b>restare fermo</b> in un punto visibile e segnalare, salvo pericolo o certezza della strada.</li>
+</ol>
+<h3>Segnali di soccorso internazionali</h3>
+<ul><li><b>3 segnali</b> ripetuti (3 fischi, 3 lampi di luce, 3 colpi, 3 fuochi disposti a triangolo), pausa, ripeti.</li>
+<li>Luce/fischio: SOS in Morse <span class="mono">··· −−− ···</span></li>
+<li>Segni a terra ben grandi (min. 3 m): <b>V</b> = serve aiuto · <b>X</b> = serve medico · <b>→</b> = direzione presa · <b>N</b> = no · <b>Y</b> = sì.</li></ul>
+<div class="alert">Questa app è una guida di orientamento. Non sostituisce corsi di primo soccorso né i soccorsi professionali: appena possibile chiama il 112.</div>
+`};
+
+S.mappa = {i:'🧭',t:'Mappa e punti',custom:'mappa'};
+
+S.medico = {i:'✚',t:'Medicina e primo soccorso',h:`
+<div class="alert">Informazioni generali di primo soccorso. In caso di dubbio chiama il <b>112</b> se hai segnale.</div>
+<details open><summary>Valutazione rapida (ordine MARCH)</summary><div><ol>
+<li><b>M</b>assive bleeding – emorragie gravi: fermale subito.</li>
+<li><b>A</b>irway – vie aeree libere?</li>
+<li><b>R</b>espiration – respira? (guarda, ascolta, senti per 10 sec.)</li>
+<li><b>C</b>irculation – polso, pelle fredda/pallida, shock.</li>
+<li><b>H</b>ypothermia / Head – previeni il freddo, controlla trauma cranico.</li></ol></div></details>
+
+<details><summary>Emorragia grave</summary><div><ol>
+<li>Comprimi direttamente con garza/stoffa pulita, premi forte e continuo.</li>
+<li>Non togliere le stoffe imbevute: aggiungine altre sopra.</li>
+<li>Fasciatura compressiva stretta (pressione, non blocco totale).</li>
+<li>Arto con sangue che esce a fiotti e non si ferma: <b>laccio emostatico</b> 5–8 cm sopra la ferita (mai su articolazione), stringi fino a fermare il sangue, <b>scrivi l'ora</b>, non allentare.</li>
+<li>Sdraia la persona, gambe leggermente alzate, tienila al caldo.</li></ol></div></details>
+
+<details><summary>Arresto cardiaco – RCP</summary><div><ol>
+<li>Non risponde e non respira (o respiro anomalo/“a rantolo”): chiama aiuto / 112.</li>
+<li>Su superficie dura: mani al centro del torace, braccia dritte.</li>
+<li><b>30 compressioni</b> profonde 5–6 cm, ritmo 100–120/min, lasciando risalire il torace.</li>
+<li>Se addestrato: <b>2 insufflazioni</b> di 1 secondo, poi ancora 30:2. Se non sai/non vuoi: solo compressioni continue.</li>
+<li>Se c'è un defibrillatore (DAE) usalo: segue le istruzioni vocali.</li>
+<li>Non fermarti finché non arrivano i soccorsi, la persona si muove o sei esausto.</li></ol></div></details>
+
+<details><summary>Soffocamento (ostruzione vie aeree)</summary><div>
+<ul><li>Tossisce forte: incoraggialo a tossire.</li>
+<li>Non riesce a parlare/respirare: <b>5 colpi tra le scapole</b> (inclinato in avanti), poi <b>5 compressioni addominali</b> (Heimlich: pugno sopra l'ombelico, spinta verso l'alto e dentro). Alterna fino a espulsione.</li>
+<li>Gravide/obesi: compressioni al centro del torace. Se perde coscienza: RCP.</li>
+<li>Neonati: 5 colpi dorso + 5 compressioni toraciche con due dita, mai Heimlich.</li></ul></div></details>
+
+<details><summary>Shock</summary><div><ul><li>Segni: pelle pallida, fredda, sudata, polso rapido e debole, confusione.</li>
+<li>Sdraia, gambe alzate (se non sospetto di fratture), copri, tratta la causa (emorragia), niente cibo, acqua solo a piccoli sorsi se cosciente e senza lesioni addominali.</li></ul></div></details>
+
+<details><summary>Ferite, infezioni, punti</summary><div><ul>
+<li>Lava a lungo con acqua potabile (o bollita e raffreddata), rimuovi sporco visibile.</li>
+<li>Disinfetta attorno; copri con garza pulita; cambia ogni giorno.</li>
+<li>Non chiudere con punti/cerotti ferite sporche o da morso.</li>
+<li>Segni di infezione: gonfiore, calore, pus, strisce rosse, febbre → serve antibiotico/medico.</li>
+<li>Miele (grado medicale) e soluzione salina sono utili come ripiego.</li></ul></div></details>
+
+<details><summary>Fratture e distorsioni</summary><div><ul>
+<li>Immobilizza nella posizione trovata con stecche (rami, rotoli di stoffa), includendo l'articolazione sopra e sotto.</li>
+<li>Controlla sensibilità e colore delle dita dopo la fasciatura; allenta se formicolio o bluastre.</li>
+<li>Colonna vertebrale sospetta (caduta, impatto): non muovere se non per pericolo imminente.</li>
+<li>Distorsione: <b>RICE</b> – riposo, ghiaccio (o acqua fredda), compressione, elevazione.</li>
+<li>Sospetta frattura esposta: copri con garza pulita, non rimettere l'osso dentro.</li></ul></div></details>
+
+<details><summary>Ustioni</summary><div><ul>
+<li>Raffredda con acqua fresca (non ghiacciata) 10–20 min.</li>
+<li>Non bucare vesciche, non applicare burro/olio/dentifricio. Copri con pellicola o garza non aderente.</li>
+<li>Rimuovi anelli/orologi prima del gonfiore. Togli i vestiti solo se non attaccati alla pelle.</li>
+<li>Gravi: più grandi del palmo della mano, viso, mani, genitali, articolazioni, ustioni chimiche/elettriche → ospedale.</li>
+<li>Ustioni chimiche: lava abbondantemente 20+ min dopo aver tolto gli abiti contaminati.</li></ul></div></details>
+
+<details><summary>Ipotermia e congelamento</summary><div><ul>
+<li>Segni: brividi intensi → poi confusione, goffaggine, parlare biascicato, brividi che cessano (grave).</li>
+<li>Porta al riparo, togli vestiti bagnati, isola dal suolo, coperte/sacco a pelo, copri testa.</li>
+<li>Bevande calde zuccherate se cosciente. Fonti di calore sul torace/ascelle/inguine, non frizionare braccia e gambe.</li>
+<li>Movimenti delicati: nelle forme gravi il cuore è fragile.</li>
+<li>Congelamento: riscalda in acqua tiepida (37–39 °C), non strofinare, non riscaldare se c'è rischio di ricongelamento.</li></ul></div></details>
+
+<details><summary>Colpo di calore e disidratazione</summary><div><ul>
+<li>Colpo di calore: pelle calda e secca o sudata, confusione, temperatura &gt;40 °C → emergenza.</li>
+<li>All'ombra, togli abiti, bagna il corpo e ventila, impacchi freddi su collo, ascelle, inguine.</li>
+<li>Disidratazione: sete, urine scure, mal di testa, vertigini.</li>
+<li><b>Soluzione reidratante fai da te:</b> 1 litro di acqua potabile + 6 cucchiaini rasi di zucchero + ½ cucchiaino di sale. Sorsi piccoli e frequenti.</li></ul></div></details>
+
+<details><summary>Diarrea e vomito</summary><div><ul>
+<li>Il pericolo è la disidratazione: usa la soluzione reidratante sopra.</li>
+<li>Evita latticini, alcol, grassi. Riso, banana, pane tostato quando tollerati.</li>
+<li>Medico se: sangue, febbre alta, durata &gt;2–3 giorni, bambini/anziani.</li></ul></div></details>
+
+<details><summary>Morsi di serpente e punture</summary><div><ul>
+<li>Vipera (la specie velenosa in Italia/Europa): calma la persona, immobilizza l'arto, togli anelli, mantieni a livello del cuore, raggiungi l'ospedale.</li>
+<li><b>Non</b> incidere, succhiare, usare lacci stretti o ghiaccio.</li>
+<li>Api/vespe: togli il pungiglione raschiando, raffredda. Gonfiore del viso, difficoltà a respirare, orticaria diffusa = <b>anafilassi</b>: adrenalina autoiniettabile se disponibile (coscia, anche sopra i vestiti) e 112.</li>
+<li>Zecche: rimuovi con pinzetta il più vicino possibile alla pelle, trazione costante, disinfetta, osserva per settimane.</li></ul></div></details>
+
+<details><summary>Avvelenamento e intossicazione</summary><div><ul>
+<li>Non provocare il vomito. Individua cosa, quanto e quando; conserva il contenitore/pianta.</li>
+<li>Monossido di carbonio (stufe, braci in ambienti chiusi): mal di testa, nausea, sonnolenza → esci all'aperto subito e ventila. <b>Mai</b> bruciare braci o usare fornelli in spazi chiusi.</li>
+<li>Funghi sconosciuti, bacche sconosciute: non mangiarli.</li></ul></div></details>
+
+<details><summary>Trauma cranico e svenimento</summary><div><ul>
+<li>Se perde coscienza: posizione laterale di sicurezza se respira.</li>
+<li>Allarme: vomito ripetuto, confusione, pupille diverse, perdita di liquido dal naso/orecchie, sonnolenza crescente.</li></ul></div></details>
+
+<details><summary>Kit medico minimo</summary><div><ul><li>Garze sterili, bende elastiche e a rete, cerotti, laccio emostatico, forbici, pinzette, guanti</li><li>Disinfettante, soluzione salina, pomata antibiotica</li><li>Analgesici/antipiretici, antistaminico, sali reidratanti, farmaci personali</li><li>Coperta termica, triangolo di tela, termometro, mascherina RCP</li></ul></div></details>
+`};
+
+S.cbrn = {i:'☢️',t:'Radiazioni e sostanze pericolose',h:`
+<div class="alert">Se c'è un incidente nucleare, radiologico o chimico: le autorità (radio, sirene, app di allerta) danno le istruzioni prioritarie. Segui sempre quelle.</div>
+<details open><summary>Radiazioni: tempo, distanza, schermo</summary><div><ul>
+<li><b>Entra subito in un edificio solido</b> (cemento, mattoni), chiudi porte e finestre, spegni ventilazione/aria condizionata.</li>
+<li>Meglio: <b>piano interrato o centro dell'edificio</b>, lontano da pareti esterne e tetto. Più massa fra te e l'esterno = più protezione.</li>
+<li>Resta dentro almeno <b>24 ore</b> (le radiazioni del fallout calano rapidamente nei primi giorni) o finché le autorità lo permettono.</li>
+<li>Ascolta una radio (a batterie/manovella) per istruzioni.</li></ul></div></details>
+
+<details><summary>Decontaminazione</summary><div><ol>
+<li>Togli i vestiti esterni: elimina circa il 90% della contaminazione. Mettili in un sacco chiuso lontano da persone.</li>
+<li>Doccia con acqua e sapone, senza strofinare forte; lava i capelli con shampoo (<b>niente balsamo</b>).</li>
+<li>Pulisci con delicatezza occhi, orecchie, unghie. Non graffiare la pelle.</li>
+<li>Indossa vestiti puliti. Non mangiare, bere o fumare all'aperto durante la contaminazione.</li></ol></div></details>
+
+<details><summary>Acqua e cibo dopo un incidente</summary><div><ul>
+<li>Acqua e cibo in contenitori chiusi (bottiglie, lattine, frigorifero, dispensa) sono sicuri dopo aver pulito l'esterno della confezione.</li>
+<li>Evita acqua piovana, pozzi aperti, ortaggi e latte da animali pascolanti nelle zone contaminate finché non è dichiarato sicuro.</li>
+<li>Bollire non elimina i radionuclidi, solo i microbi.</li></ul></div></details>
+
+<details><summary>Ioduro di potassio (compresse di iodio)</summary><div><ul>
+<li>Protegge <b>solo la tiroide</b> da iodio radioattivo e <b>solo</b> se assunto nel momento indicato dalle autorità. Non protegge da altre radiazioni.</li>
+<li>Non assumerlo “per prudenza” senza indicazione: può causare effetti collaterali.</li>
+<li>Le dosi variano per età e vanno seguite dalle istruzioni sanitarie ufficiali (bambini e donne in gravidanza sono prioritari).</li></ul></div></details>
+
+<details><summary>Segni di sindrome da radiazioni</summary><div><ul>
+<li>Nausea e vomito entro poche ore dall'esposizione sono un segnale di dose elevata.</li>
+<li>Poi: stanchezza, perdita di capelli, ustioni cutanee, sanguinamenti, infezioni.</li>
+<li>Cure di supporto: idratazione, evitare infezioni, assistenza medica appena possibile.</li></ul></div></details>
+
+<details><summary>Incidente chimico / gas tossici</summary><div><ul>
+<li>Allontanati <b>controvento</b> e in <b>posizione elevata</b> (molti gas pesanti si accumulano in basso) oppure rifugiati al chiuso in una stanza alta, sigilla fessure con nastro e panni bagnati.</li>
+<li>Copri naso e bocca con panno umido (protezione minima, non è un respiratore).</li>
+<li>Togli i vestiti contaminati tagliandoli giù dal corpo, non sopra la testa; lava pelle e occhi con acqua abbondante 15–20 min.</li>
+<li>Se senti odori forti, occhi che bruciano, tosse, vertigini: allontanati.</li>
+<li>Cloro: odore di piscina; ammoniaca: odore pungente; monossido di carbonio: inodore.</li></ul></div></details>
+
+<details><summary>Rischio biologico / epidemie</summary><div><ul>
+<li>Lavare le mani con sapone almeno 20 secondi, soprattutto prima di mangiare e dopo i bagni.</li>
+<li>Mascherine FFP2/FFP3, isolare i malati, ventilare, disinfettare superfici.</li>
+<li>Gestione rifiuti e latrine lontano da fonti d'acqua (almeno 30 m).</li></ul></div></details>
+`};
+
+S.acqua = {i:'💧',t:'Acqua',h:`
+<div class="alert"><b>Fabbisogno:</b> almeno 2–3 litri/giorno a persona, molto di più con caldo o sforzo. Per cucinare/lavarsi calcola altri 2–3 litri.</div>
+<details open><summary>Dove trovarla</summary><div><ul>
+<li>Pioggia (telo inclinato, bacinella), rugiada (raccolta con stoffa all'alba), neve/ghiaccio (sciogli prima, non mangiarla: raffredda il corpo).</li>
+<li>Ruscelli e torrenti in <b>movimento</b>, a monte di abitati, pascoli e strade, sono meglio di acque stagnanti.</li>
+<li>Sorgenti ai piedi di rocce, vegetazione verde intensa in un fondovalle secco indica acqua vicina.</li>
+<li>In emergenza urbana: scaldabagno, serbatoio sciacquone (non quello della tazza), tubature, ghiaccio e liquidi in scatola.</li>
+<li>Terreni aridi: scava a 30–60 cm nella parte esterna di una curva di letto asciutto, aspetta che si riempia.</li>
+<li><b>Mai bere acqua di mare</b>, urina, alcol, sangue. Peggiorano la disidratazione.</li></ul></div></details>
+
+<details><summary>Sistemi di purificazione</summary><div>
+<h3>1. Prefiltro (toglie torbidità)</h3>
+<p>Filtra con stoffa fitta, caffè-filtro, maglietta pulita o sabbia/carbone. <b>Non rende l'acqua sicura da sola</b>: dopo devi sempre disinfettare.</p>
+<h3>2. Bollitura (metodo più affidabile)</h3>
+<p>Porta a ebollizione piena per <b>1 minuto</b> (3 minuti sopra i 2000 m). Lascia raffreddare coperta.</p>
+<h3>3. Cloro (candeggina o compresse)</h3>
+<ul><li>Candeggina 5–6% senza additivi/profumi: <b>2 gocce per litro</b> (4 se acqua torbida/fredda). Mescola e aspetta <b>30 minuti</b>; deve sentirsi un leggero odore di cloro.</li>
+<li>Compresse di cloro/biossido: segui le istruzioni della confezione.</li></ul>
+<h3>4. SODIS (sole)</h3>
+<p>Bottiglia PET trasparente, riempita fino al collo, acqua poco torbida, al sole pieno per <b>6 ore</b> (2 giorni se nuvoloso). Meno efficace di bollitura/cloro.</p>
+<h3>5. Filtri commerciali</h3>
+<p>Filtri a fibra cava o ceramica con pori ≤ 0,2 micron eliminano batteri e protozoi; per i virus serve pure disinfezione (cloro, UV, bollitura).</p>
+<h3>6. Filtro fai da te a strati</h3>
+<p>Bottiglia tagliata capovolta, dal basso verso l'alto: <b>stoffa → carbone di legna lavato e frantumato → sabbia fine → sabbia grossa → ghiaia</b>. Fai passare l'acqua più volte. Poi bolli sempre.</p>
+<h3>7. Distillazione solare / condensazione</h3>
+<p>Buca, recipiente al centro, telo trasparente sopra con sassolino al centro: l'acqua condensa e gocciola nel recipiente. Resa bassa, utile con acqua salata/contaminata.</p></div></details>
+
+<details><summary>Segni di acqua rischiosa</summary><div><ul><li>Cattivo odore, schiuma, colore anomalo, carcasse animali a monte, pesci morti, acqua stagnante con alghe verdi/azzurre.</li><li>Acque con possibili sostanze chimiche (scarichi industriali, agricoltura intensiva) non vengono rese sicure da bollitura/filtri semplici.</li></ul></div></details>
+
+<details><summary>Conservare l'acqua</summary><div><ul><li>Contenitori puliti, scuri, ben chiusi, al fresco: durano mesi se potabilizzata.</li><li>Candeggina per conservazione: 8 gocce per litro se rimane stoccata per lungo tempo (non per acqua già torbida).</li></ul></div></details>
+`};
+
+S.cibo = {i:'🍲',t:'Cibo e cucina',h:`
+<div class="alert">Puoi stare settimane senza cibo, ma non senza acqua. Mangia solo ciò che riconosci con certezza.</div>
+<details open><summary>Priorità</summary><div><ol><li>Acqua sicura</li><li>Cibo già disponibile (scatolette, pasta, riso, legumi secchi, miele, frutta secca)</li><li>Razionamento: pasti piccoli e regolari, più calorie in caso di freddo</li><li>Raccolta e caccia/pesca solo se necessario e legalmente permesso nel contesto</li></ol></div></details>
+
+<details><summary>Cibo conservato e sicuro</summary><div><ul>
+<li>Scatolette gonfie, perdite, ruggine profonda, odore strano: non mangiare.</li>
+<li>Congelatore senza corrente: consuma prima i cibi scongelati; chiuso e pieno resta freddo 24–48 h.</li>
+<li>Carne, pesce, uova, latticini crudi: rischio alto. Cuoci bene (carne ≥ 70 °C al cuore).</li>
+<li>Pane/riso/legumi secchi: tenere asciutti, in contenitori chiusi.</li></ul></div></details>
+
+<details><summary>Piante commestibili comuni in Europa</summary><div>
+<div class="danger">Mai sperimentare a caso: molte piante velenose somigliano a quelle buone. Se non sei sicuro al 100%, non mangiarla. <b>Funghi: evitali del tutto</b> se non sei esperto (possono essere mortali).</div>
+<ul><li><b>Ortica</b> (cotta/bollita, perde il pizzicore)</li><li><b>Tarassaco</b> (foglie, radici, fiori)</li><li><b>Piantaggine</b> (foglie giovani)</li><li><b>Trifoglio</b>, <b>acetosella</b> (con moderazione)</li><li><b>More</b>, <b>lamponi</b>, <b>mirtilli</b></li><li><b>Nocciole, noci, castagne</b> (castagne cotte)</li><li><b>Ghiande</b>: tostate/bollite più volte per eliminare i tannini</li><li><b>Pino</b>: aghi in infuso (vitamina C), non in gravidanza</li><li><b>Rosa canina</b> (frutti senza peli interni)</li></ul>
+<p class="small">Test di commestibilità: lungo, rischioso, non è un metodo affidabile in emergenza. Evita piante con linfa lattiginosa, sapore amaro/saponoso, bacche bianche o rosse sconosciute, ombrellifere (cicuta mortale).</p></div></details>
+
+<details><summary>Pesca, trappole, animali</summary><div><ul>
+<li>Pesca con lenza, amo, rete o trappole a nassa; pesci e molluschi d'acqua dolce vanno cotti bene.</li>
+<li>Lumache e rane possono essere commestibili ma rischiose se non conosci la specie; cuoci sempre.</li>
+<li>Trappole a laccio e caccia: richiedono pratica e in molte situazioni sono vietate. Usale solo come ultima risorsa.</li>
+<li>Pulisci gli animali subito, evita fegato di alcuni predatori/uccelli marini; non mangiare animali che sembrano malati.</li></ul></div></details>
+
+<details><summary>Cucinare in emergenza</summary><div><ul>
+<li>Fornelli a gas/alcool, stufe a legna, fuoco con pietre, “fuoco Dakota”.</li>
+<li>Bollire è il metodo più semplice e riduce i rischi.</li>
+<li>Cotture indirette: pentola in cenere calda, avvolgere in foglie/argilla/carta alluminio.</li>
+<li><b>Mai usare fornelli, bracieri o stufe a combustione in ambienti chiusi</b> (monossido di carbonio).</li></ul></div></details>
+
+<details><summary>Razione di sopravvivenza</summary><div><ul><li>Adulto: circa 1800–2200 kcal/giorno in condizioni normali; di più con freddo e sforzo.</li><li>Alimenti densi: frutta secca, burro di arachidi, cioccolato, barrette, olio, formaggi stagionati, carne secca, riso, pasta, farina, miele.</li></ul></div></details>
+`};
+
+S.fuoco = {i:'🔥',t:'Fuoco',h:`
+<details open><summary>Triangolo del fuoco</summary><div><p>Servono <b>calore + combustibile + ossigeno</b>. Togli uno e il fuoco si spegne.</p>
+<ol><li><b>Esca (tinder):</b> carta, erba secca, corteccia di betulla, lanugine, cotone/ovatta con vaselina, trucioli sottili, fibre di corde.</li>
+<li><b>Legnetti (kindling):</b> rametti sottili come matita.</li>
+<li><b>Legna:</b> pezzi più spessi, bella secca (suono secco, spezzata di netto).</li></ol>
+<p>Prepara tutto il materiale <b>prima</b> di accendere.</p></div></details>
+
+<details><summary>Dove accenderlo</summary><div><ul>
+<li>Riparato dal vento, lontano da rami bassi, radici, erba alta e tende.</li>
+<li>Isola dal suolo umido con pietre piatte, rami o sabbia.</li>
+<li>Pulisci un cerchio di 2–3 m e tieni acqua/terra a portata di mano.</li>
+<li>Nelle situazioni in cui non devi farti vedere: fuoco basso, legna secca che fa poco fumo, buca (Dakota hole), schermi per luce e fumo.</li></ul></div></details>
+
+<details><summary>Strutture del fuoco</summary><div><ul>
+<li><b>Tepee (a tenda):</b> accensione rapida, buona fiamma, ottimo per iniziare.</li>
+<li><b>Capanna (log cabin):</b> brace durevole, adatta a cucinare.</li>
+<li><b>Stella:</b> lunga durata, rispetta la legna, si spingono i ceppi verso il centro.</li>
+<li><b>Dakota hole:</b> due buche collegate nel terreno: poco fumo, poco luce, resiste al vento, ottima per cucinare.</li>
+<li><b>Fuoco a lunga durata:</b> grande ceppo con pietre riflettenti dietro per scaldare il riparo.</li></ul></div></details>
+
+<details><summary>Come accendere</summary><div><ul>
+<li><b>Accendino / fiammiferi:</b> tieni sempre in contenitore stagno. Fiammiferi antivento sono migliori.</li>
+<li><b>Acciarino (ferro-ceria):</b> raschia con lama contro l'asta per far saltare scintille sull'esca.</li>
+<li><b>Batteria + lana d'acciaio / carta stagnola:</b> collega i poli, il filo sottile si surriscalda e accende.</li>
+<li><b>Lente / fondo di lattina lucidato:</b> concentra il sole sull'esca scura.</li>
+<li><b>Trapano ad arco (bow drill):</b> arco, asta, base, cuscinetto: la frizione crea una brace. Richiede pratica e legno secco morbido (salice, pioppo, tiglio).</li></ul></div></details>
+
+<details><summary>Sicurezza e spegnimento</summary><div><ul>
+<li>Mai lasciare un fuoco incustodito; tieni acqua vicina.</li>
+<li>Spegni con acqua, mescola e controlla con la mano che sia freddo.</li>
+<li>Rischi: scintille, monossido in luoghi chiusi, incendi boschivi nei periodi secchi.</li></ul></div></details>
+`};
+
+S.comm = {i:'📻',t:'Comunicazioni e radio',custom:'comm'};
+
+S.esterno = {i:'⛺',t:'Sopravvivenza all\'aperto',h:`
+<details open><summary>Riparo</summary><div><ul>
+<li>Scegli: terreno asciutto e piano, lontano da letti di fiumi, versanti franosi, alberi secchi e punti più alti (fulmini).</li>
+<li>Isolati <b>dal suolo</b>: strato di foglie, rami, erba, zaino (un riparo senza isolamento dal terreno è freddo).</li>
+<li><b>Lean-to:</b> trave su due appoggi, rami inclinati, copertura di fogliame/telo.</li>
+<li><b>A-frame:</b> trave centrale a V, spesso con telo/poncho. Piccolo = più caldo.</li>
+<li><b>Telo/poncho:</b> tendi con corda e picchetti, lato basso al vento.</li>
+<li><b>Neve:</b> buca nella neve o caverna con foro di ventilazione.</li>
+<li>Meglio lo spazio ridotto: poco volume da scaldare.</li></ul></div></details>
+
+<details><summary>Nodi essenziali</summary><div>
+<h3>Nodo piano</h3><p>Unisce due corde uguali. Destra su sinistra e sotto, poi sinistra su destra e sotto. Non usare per carichi critici.</p>
+<h3>Gassa d'amante (bowline)</h3><p>Cappio che non scorre. Fai un piccolo occhio, passa il capo corrente dentro come “il coniglio che esce dalla tana”, gira dietro l'albero (parte fissa) e rientra nella tana. Stringi.</p>
+<h3>Parlato (clove hitch)</h3><p>Fissa su palo/albero. Due giri a incrocio e inserisci il capo sotto l'ultimo giro. Rapido, regolabile.</p>
+<h3>Due mezzi colli</h3><p>Ancoraggio rapido: giro attorno al palo e due mezzi colli consecutivi sulla parte fissa.</p>
+<h3>Nodo a otto</h3><p>Nodo di arresto sicuro: fai un occhio, passa il capo attorno alla parte fissa e dentro l'occhio. Si scioglie facilmente anche dopo il carico.</p>
+<h3>Prusik</h3><p>Nodo autobloccante: cordino sottile avvolto 3 volte su una corda più grossa; scorre se non è carico, si blocca sotto carico.</p>
+<h3>Nodo del pescatore</h3><p>Unisce due corde sottili (due nodi semplici che si abbracciano).</p></div></details>
+
+<details><summary>Orientamento</summary><div><ul>
+<li><b>Bussola:</b> allinea l'ago con il Nord magnetico; ricorda declinazione locale.</li>
+<li><b>Sole:</b> sorge a Est, tramonta a Ovest, a mezzogiorno solare è a Sud (emisfero Nord).</li>
+<li><b>Orologio analogico:</b> punta la lancetta delle ore verso il sole: la bisettrice tra lancetta e le 12 indica il Sud.</li>
+<li><b>Bastone e ombra:</b> pianta un bastone, segna la punta dell'ombra, aspetta 15–20 minuti e segna di nuovo: la linea tra i due punti va grosso modo Ovest→Est.</li>
+<li><b>Stella Polare:</b> prolunga di 5 volte la distanza tra le due stelle “guardie” del Grande Carro. È il Nord.</li>
+<li>Muschio sul tronco non è un indicatore affidabile.</li>
+<li>Con corsi d'acqua: seguili a valle porta di solito verso insediamenti (non sempre).</li>
+<li>Il <b>GPS del telefono funziona anche senza internet</b> (modalità aereo ok): usa la sezione “Punti”.</li></ul></div></details>
+
+<details><summary>Meteo</summary><div><ul>
+<li>Calo rapido della pressione, vento che cambia, nuvole scure e cumuli in crescita = temporale/perturbazione.</li>
+<li>Cielo rosso la sera: spesso tempo stabile; rosso al mattino: possibile peggioramento.</li>
+<li>Temporale: scendi da creste e cime, evita alberi isolati e acqua, posizione accovacciata sui talloni, piedi uniti.</li>
+<li>Lampo → tuono: conta i secondi, 3 secondi ≈ 1 km.</li></ul></div></details>
+
+<details><summary>Abbigliamento e freddo/caldo</summary><div><ul>
+<li><b>Strati:</b> traspirante vicino alla pelle, isolante (pile/lana), esterno antivento/impermeabile.</li>
+<li>Evita il cotone se bagnato; scarpe e calze asciutte.</li>
+<li>Caldo: copri la pelle con tessuti leggeri, cappello, riposa nelle ore calde, muoviti all'alba/sera.</li></ul></div></details>
+
+<details><summary>Nascondersi e restare non visibili</summary><div><ul>
+<li>Cerca ripari <b>sotto il profilo delle creste</b>, non su rilievi o spazi aperti; sfrutta boschi fitti, cavità, edifici abbandonati sicuri.</li>
+<li>Limita luce, rumore, fumo e riflessi (orologi, vetri, lamine).</li>
+<li>Usa colori neutri, copri superfici lucide, evita sentieri evidenti e linee dritte.</li>
+<li>Cambia posizione se noti segni di essere stato visto.</li>
+<li>Attenzione: nascondersi può ritardare i soccorsi. Se sei in emergenza civile (non di pericolo), preferisci segnalare la tua posizione ai soccorritori.</li></ul></div></details>
+
+<details><summary>Igiene e latrina</summary><div><ul><li>Lavati le mani sempre con sapone o cenere + acqua.</li><li>Latrina: buca profonda 30 cm, a 30+ m da acqua e riparo. Copri dopo l'uso.</li><li>Rifiuti lontano dal riparo (attirano animali).</li></ul></div></details>
+
+<details><summary>Animali selvatici</summary><div><ul><li>Non avvicinare e non nutrire; conserva cibo sigillato e lontano dal riparo.</li><li>Cinghiali/cervi in stagione di accoppiamento sono pericolosi: mantieni distanza.</li><li>Orso (Alpi, Appennini, Carpazi, Scandinavia): non correre, parla con voce calma, indietreggia lentamente.</li></ul></div></details>
+
+<details><summary>Kit essenziale (zaino di emergenza)</summary><div><ul><li>Acqua e filtro/compresse, cibo calorico</li><li>Torcia + batterie, accendino/acciarino, coltello multiuso</li><li>Coperta termica, telo/poncho, corda</li><li>Radio a manovella, power bank, cavi, fischietto, bussola, mappa cartacea</li><li>Kit medico, documenti e contanti, abiti di ricambio</li></ul></div></details>
+`};
+
+/* ====== SEZIONE MAPPA / PUNTI ====== */
+function renderMappa(el){
+  el.innerHTML = `
+  <h2>🧭 Mappa e punti</h2>
+  <div class="alert"><b>Mappa offline dell'Europa:</b> questa app non può contenere le mappe di Google (licenza e dimensioni lo impediscono). La soluzione gratuita e legale è usare un'app di mappe offline <b>mentre hai ancora internet</b>:
+  <ul><li><b>Organic Maps</b> (gratis, open source, mappe OpenStreetMap) – scarichi Paesi interi; mostra sorgenti d'acqua, rifugi, sentieri, cime.</li>
+  <li><b>OsmAnd</b> (gratis con limiti) – mappe offline con curve di livello.</li>
+  <li><b>Google Maps</b> → profilo → “Mappe offline” → scarica aree (non tutta l'Europa insieme, ma per regioni; scadono se non aggiornate ogni tanto).</li>
+  <li><b>Mappe cartacee e bussola</b> sono sempre il backup più affidabile.</li></ul>
+  Il GPS del telefono funziona anche senza internet.</div>
+
+  <details open><summary>📍 I miei punti (GPS offline)</summary><div>
+    <p class="small">Salva la tua posizione GPS con un'etichetta. I dati restano sul telefono. Per la precisione, esci all'aperto.</p>
+    <div id="gps" class="small">Posizione: in attesa…</div>
+    <select id="ptype" style="margin:8px 0">
+      <option value="💧 Acqua">💧 Acqua</option><option value="🏕️ Riparo">🏕️ Riparo</option><option value="🙈 Nascondiglio">🙈 Nascondiglio</option>
+      <option value="🔥 Legna/fuoco">🔥 Legna/fuoco</option><option value="🍎 Cibo">🍎 Cibo</option><option value="🏥 Ospedale/farmacia">🏥 Ospedale/farmacia</option>
+      <option value="🚩 Punto di ritrovo">🚩 Punto di ritrovo</option><option value="⚠️ Pericolo">⚠️ Pericolo</option><option value="⭐ Altro">⭐ Altro</option>
+    </select>
+    <input type="text" id="pname" placeholder="Nota (opzionale)" style="margin-bottom:8px">
+    <button class="btn" onclick="addPoint()">Salva qui</button>
+    <button class="btn s" onclick="manualPoint()">Inserisci coordinate</button>
+    <div id="plist"></div>
+    <button class="btn s" onclick="exportPts()">Copia elenco (testo)</button>
+  </div></details>
+
+  <details><summary>Come scegliere un buon punto</summary><div>
+  <h3>Acqua</h3><ul><li>Torrenti e sorgenti a monte da insediamenti/pascoli; fontane in paesi e cimiteri (acqua spesso potabile).</li><li>Sulle mappe OSM cerca simboli di “sorgente”, “fontana”, “pozzo”.</li></ul>
+  <h3>Riparo e nascondiglio</h3><ul><li>Fondo di bosco misto, cavità rocciose, ruderi, baite/bivacchi (cercali su Organic Maps), ponti e gallerie solo se sicuri.</li><li>Lontano da strade principali, creste, letti di fiumi, versanti con rischio di frana/valanga.</li><li>Zone con più vie di fuga e vicino a risorse (acqua, legna).</li></ul>
+  <h3>Rischi da evitare</h3><ul><li>Fondovalle e greti (piene improvvise), pendii ripidi, alberi isolati o morti, zone vicino a impianti industriali o chimici, dighe, linee ad alta tensione.</li></ul>
+  </div></details>
+
+  <details><summary>Leggere le coordinate</summary><div><ul>
+  <li>Formati: gradi decimali (45.4642, 9.1900) o gradi-minuti-secondi.</li>
+  <li>Latitudine = Nord/Sud, Longitudine = Est/Ovest. Per l'Italia: lat circa 36–47 N, lon 6–19 E.</li>
+  <li>Comunica sempre le coordinate ai soccorritori: sono più utili di una descrizione.</li>
+  <li>Con 4 decimali la precisione è ~10 m.</li></ul></div></details>
+  `;
+  startGPS(); renderPts();
+}
+
+let cur=null, watchId=null;
+function startGPS(){
+  if(!navigator.geolocation){document.getElementById('gps').textContent='GPS non disponibile.';return}
+  if(watchId) navigator.geolocation.clearWatch(watchId);
+  watchId=navigator.geolocation.watchPosition(p=>{
+    cur={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy};
+    const g=document.getElementById('gps');
+    if(g) g.innerHTML=`📡 <b>${cur.lat.toFixed(5)}, ${cur.lon.toFixed(5)}</b> (±${Math.round(cur.acc)} m)`;
+    renderPts();
+  },e=>{const g=document.getElementById('gps'); if(g) g.textContent='GPS: '+e.message+' – attiva la posizione e riprova.'},{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
+}
+const getPts=()=>{try{return JSON.parse(localStorage.getItem('pts')||'[]')}catch(e){return []}};
+const setPts=a=>{try{localStorage.setItem('pts',JSON.stringify(a))}catch(e){}};
+function addPoint(){
+  if(!cur){alert('Posizione non ancora disponibile.');return}
+  const a=getPts();a.push({t:document.getElementById('ptype').value,n:document.getElementById('pname').value,lat:cur.lat,lon:cur.lon,d:Date.now()});
+  setPts(a);document.getElementById('pname').value='';renderPts();
+}
+function manualPoint(){
+  const s=prompt('Coordinate (lat, lon), es. 45.4642, 9.1900');if(!s)return;
+  const m=s.split(/[,;\s]+/).map(parseFloat);if(m.length<2||isNaN(m[0])||isNaN(m[1])){alert('Formato non valido');return}
+  const a=getPts();a.push({t:document.getElementById('ptype').value,n:document.getElementById('pname').value,lat:m[0],lon:m[1],d:Date.now()});setPts(a);renderPts();
+}
+function delPt(i){const a=getPts();a.splice(i,1);setPts(a);renderPts()}
+function dist(a,b,c,d){const R=6371000,r=Math.PI/180,x=(c-a)*r,y=(d-b)*r;const h=Math.sin(x/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function bear(a,b,c,d){const r=Math.PI/180;const y=Math.sin((d-b)*r)*Math.cos(c*r);const x=Math.cos(a*r)*Math.sin(c*r)-Math.sin(a*r)*Math.cos(c*r)*Math.cos((d-b)*r);return (Math.atan2(y,x)/r+360)%360}
+function card(b){return ['N','NE','E','SE','S','SO','O','NO'][Math.round(b/45)%8]}
+function renderPts(){
+  const el=document.getElementById('plist');if(!el)return;
+  const a=getPts();
+  if(!a.length){el.innerHTML='<p class="small">Nessun punto salvato.</p>';return}
+  el.innerHTML=a.map((p,i)=>{
+    let info='';
+    if(cur){const d=dist(cur.lat,cur.lon,p.lat,p.lon),b=bear(cur.lat,cur.lon,p.lat,p.lon);info=`<br>➡️ ${d<1000?Math.round(d)+' m':(d/1000).toFixed(2)+' km'} verso <b>${card(b)}</b> (${Math.round(b)}°)`}
+    return `<div class="pt"><div><b>${p.t}</b> ${p.n?('– '+esc(p.n)):''}<br><small>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</small>${info}</div><button class="btn r" onclick="delPt(${i})">✕</button></div>`}).join('');
+}
+function exportPts(){const t=getPts().map(p=>`${p.t} ${p.n||''}: ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`).join('\n');
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('Copiato')).catch(()=>prompt('Copia manualmente:',t))}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ====== SEZIONE COMUNICAZIONI ====== */
+const NATO={A:'Alpha',B:'Bravo',C:'Charlie',D:'Delta',E:'Echo',F:'Foxtrot',G:'Golf',H:'Hotel',I:'India',J:'Juliett',K:'Kilo',L:'Lima',M:'Mike',N:'November',O:'Oscar',P:'Papa',Q:'Quebec',R:'Romeo',S:'Sierra',T:'Tango',U:'Uniform',V:'Victor',W:'Whiskey',X:'X-ray',Y:'Yankee',Z:'Zulu'};
+const MORSE={A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',0:'-----',1:'.----',2:'..---',3:'...--',4:'....-',5:'.....',6:'-....',7:'--...',8:'---..',9:'----.','.':'.-.-.-',',':'--..--','?':'..--..','/':'-..-.'};
+const NUM={0:'Zero',1:'Uno',2:'Due',3:'Tre',4:'Quattro',5:'Cinque',6:'Sei',7:'Sette',8:'Otto',9:'Nove'};
+
+function renderComm(el){
+  const nt=Object.keys(NATO).map(k=>`<tr><td><b>${k}</b></td><td>${NATO[k]}</td><td class="mono">${MORSE[k].replace(/\./g,'·').replace(/-/g,'−')}</td></tr>`).join('');
+  const nn=Object.keys(NUM).map(k=>`<tr><td><b>${k}</b></td><td>${NUM[k]}</td><td class="mono">${MORSE[k].replace(/\./g,'·').replace(/-/g,'−')}</td></tr>`).join('');
+  el.innerHTML=`<h2>📻 Comunicazioni e radio</h2>
+  <details open><summary>Traduttore Morse (suono + luce)</summary><div>
+    <input type="text" id="mtxt" placeholder="Scrivi un messaggio, es. SOS" value="SOS">
+    <div id="mout" class="mono" style="margin:10px 0;font-size:20px;word-break:break-all"></div>
+    <button class="btn" onclick="playMorse('sound')">🔊 Suono</button>
+    <button class="btn s" onclick="playMorse('light')">💡 Lampo schermo</button>
+    <button class="btn r" onclick="stopMorse()">Stop</button>
+    <p class="small">Puntino = 1 unità · linea = 3 · spazio tra segni = 1 · tra lettere = 3 · tra parole = 7. Per segnalare di notte usa la luce schermo/torcia dello smartphone al massimo.</p>
+  </div></details>
+
+  <details><summary>Alfabeto fonetico NATO e Morse</summary><div>
+    <table><tr><th>Lett.</th><th>Parola</th><th>Morse</th></tr>${nt}</table>
+    <h3>Numeri</h3><table>${nn}</table>
+    <p class="small">Pronuncia numeri in radio: “Tree”, “Fife”, “Niner” nello standard internazionale per evitare confusione.</p>
+  </div></details>
+
+  <details><summary>Procedure radio e messaggi di emergenza</summary><div>
+  <ul><li><b>MAYDAY (×3):</b> pericolo di vita imminente.</li><li><b>PAN-PAN (×3):</b> urgenza, nessun pericolo immediato di vita.</li><li><b>SÉCURITÉ:</b> avvisi di sicurezza.</li><li><b>Over:</b> ho finito, rispondi · <b>Out:</b> fine comunicazione · <b>Roger/Ricevuto</b> · <b>Say again/Ripeti</b> · <b>Wait/Attendi</b> · <b>Standby</b>.</li></ul>
+  <h3>Modello messaggio MAYDAY</h3>
+  <ol><li>MAYDAY MAYDAY MAYDAY</li><li>Qui [tuo nome/identificativo] ×3</li><li>MAYDAY + nome</li><li>Posizione (coordinate o riferimenti chiari)</li><li>Natura dell'emergenza</li><li>Numero di persone e stato</li><li>Aiuto richiesto</li><li>OVER</li></ol>
+  <p class="small">Parla lentamente, chiaro, con frasi brevi; ripeti la posizione. Ascolta prima di trasmettere per non sovrapporti.</p></div></details>
+
+  <details><summary>Tipi di radio e frequenze utili</summary><div>
+  <table>
+  <tr><th>Tipo</th><th>Note</th></tr>
+  <tr><td><b>PMR446</b></td><td>446 MHz, 8/16 canali, 0,5 W, senza licenza. Portata 1–5 km (di più in alto, senza ostacoli).</td></tr>
+  <tr><td><b>CB</b></td><td>27 MHz, 40 canali. Canale 9 per emergenze in vari Paesi. Portata maggiore con antenna adeguata.</td></tr>
+  <tr><td><b>FM / AM</b></td><td>Ricezione notizie e allerte (FM 87,5–108 MHz). Spesso radio nazionale con istruzioni di crisi.</td></tr>
+  <tr><td><b>Onde corte (HF)</b></td><td>Lunga distanza (migliaia di km): notizie internazionali.</td></tr>
+  <tr><td><b>Radioamatori</b></td><td>Richiede patente. 144 MHz (2 m) e 430 MHz (70 cm) frequenze chiamata.</td></tr>
+  <tr><td><b>Marina VHF</b></td><td>Canale 16 (156,8 MHz) = emergenza marittima.</td></tr>
+  <tr><td><b>Aeronautica</b></td><td>121,5 MHz frequenza di emergenza aerea.</td></tr>
+  </table>
+  <div class="alert">Trasmettere su frequenze senza autorizzazione è illegale in condizioni normali. In pericolo di vita, la chiamata di soccorso è consentita ovunque.</div></div></details>
+
+  <details><summary>Come funziona una radio</summary><div>
+  <ul><li><b>Antenna</b> capta le onde elettromagnetiche.</li><li><b>Sintonizzatore</b> (circuito LC) seleziona la frequenza.</li><li><b>Demodulatore/rivelatore</b> estrae audio dalla portante (AM/FM).</li><li><b>Amplificatore</b> e <b>altoparlante</b> rendono udibile il suono.</li><li><b>Trasmettitore:</b> microfono → modulatore → amplificatore di potenza → antenna.</li></ul>
+  <h3>Radio a galena (senza batteria)</h3>
+  <p>Antenna lunga (10–20 m di filo, all'aperto) + bobina di filo smaltato su tubo (circa 80–100 spire) + condensatore variabile + <b>diodo al germanio</b> + auricolare ad alta impedenza + presa di terra (tubo dell'acqua metallico, picchetto). Capta stazioni AM locali.</p></div></details>
+
+  <details><summary>Riparazione radio: diagnosi</summary><div>
+  <div class="alert">Scollega sempre la batteria/alimentazione prima di aprire. Condensatori grandi possono tenere carica: scaricali con una resistenza, non con il cacciavite.</div>
+  <ol><li><b>Nessuna accensione:</b> batterie scariche/inverse, contatti ossidati (pulisci con aceto/alcool e cotton fioc), fusibile bruciato, cavo rotto, interruttore guasto.</li>
+  <li><b>Accende ma non si sente nulla:</b> volume/squelch, spinotto cuffie incastrato, altoparlante staccato, antenna rotta o non avvitata.</li>
+  <li><b>Fruscio/gracchia:</b> potenziometro sporco (spray detergente contatti), contatti ossidati, antenna insufficiente.</li>
+  <li><b>Radio ricevente debole:</b> antenna corta/staccata, batterie quasi scariche, saldature fredde.</li>
+  <li><b>Ispezione:</b> cerca componenti bruciati, condensatori gonfi, piste interrotte, saldature crepate (rifai con saldatore e stagno).</li>
+  <li><b>Multimetro:</b> misura la tensione della batteria, la continuità dei fili e dell'interruttore, i fusibili.</li>
+  <li><b>Radio a manovella:</b> controlla ingranaggi, cavetto del dinamo e batteria interna.</li>
+  <li><b>Walkie-talkie:</b> prova con altre batterie, stesso canale/codice, volume e sottotoni disattivati.</li></ol>
+  <p class="small">Antenna di fortuna: filo di rame lungo ~λ/4 della frequenza (a 27 MHz ≈ 2,7 m; a 446 MHz ≈ 16 cm; FM ≈ 75 cm).</p></div></details>
+
+  <details><summary>Segnalare ai soccorsi senza radio</summary><div><ul>
+  <li><b>Specchio/CD/lamina:</b> rifletti il sole verso aerei/elicotteri, muovi a intermittenza. Visibile oltre 10 km.</li>
+  <li><b>Fuoco e fumo:</b> fuoco di notte; di giorno aggiungi vegetazione verde/gomma per fumo denso. Tre fuochi in triangolo.</li>
+  <li><b>Fischietto:</b> 3 colpi, pausa, ripeti.</li>
+  <li><b>Colore a terra:</b> teli, vestiti, pietre in contrasto formano segni grandi.</li>
+  <li><b>Telefono:</b> attiva modalità aereo per risparmiare, accendilo ogni tanto per cercare rete/SMS al 112; sposta in alto per trovare segnale; invia SMS (richiede meno segnale di una chiamata).</li>
+  <li>Risparmia batteria: luminosità bassa, spegni app e connettività inutile.</li></ul></div></details>
+  `;
+  document.getElementById('mtxt').addEventListener('input',showMorse);showMorse();
+}
+function toMorse(t){return t.toUpperCase().split('').map(c=>c===' '?'/':(MORSE[c]||'')).filter(Boolean).join(' ')}
+function showMorse(){const o=document.getElementById('mout');if(o)o.textContent=toMorse(document.getElementById('mtxt').value).replace(/\./g,'·').replace(/-/g,'−')}
+let mStop=false,ac=null;
+async function playMorse(mode){
+  stopMorse();mStop=false;
+  const code=toMorse(document.getElementById('mtxt').value);const u=90;
+  if(mode==='sound'){ac=new (window.AudioContext||window.webkitAudioContext)()}
+  const fl=document.getElementById('flash');
+  const on=async d=>{if(mode==='sound'){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=650;g.gain.value=.3;o.connect(g);g.connect(ac.destination);o.start();await sl(d);o.stop()}else{fl.style.display='block';await sl(d);fl.style.display='none'}};
+  const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  for(const ch of code){if(mStop)break;
+    if(ch==='.')await on(u),await sl(u);
+    else if(ch==='-')await on(u*3),await sl(u);
+    else if(ch===' ')await sl(u*2);
+    else if(ch==='/')await sl(u*4);}
+  fl.style.display='none';
+}
+function stopMorse(){mStop=true;document.getElementById('flash').style.display='none';if(ac){try{ac.close()}catch(e){}ac=null}}
+document.getElementById('flash').addEventListener('click',stopMorse);
+
+/* ====== APP SHELL ====== */
+const order=['sos','mappa','medico','cbrn','acqua','cibo','fuoco','comm','esterno'];
+const app=document.getElementById('app');
+
+function home(){
+  document.getElementById('title').textContent='SOS Survival Offline';
+  app.innerHTML=`<input type="search" id="q" placeholder="🔎 Cerca: acqua, fuoco, morse, ustione…">
+  <div id="res"></div>
+  <div class="grid" id="tiles">`+order.map(k=>`<button class="tile ${k==='sos'?'sos':''}" onclick="go('${k}')"><span>${S[k].i}</span>${S[k].t}</button>`).join('')+`</div>
+  <p class="small" style="margin-top:20px">Funziona senza internet dopo la prima apertura. Aggiungi alla schermata Home dal menu del browser per installarla come app.</p>`;
+  document.getElementById('q').addEventListener('input',search);
+}
+function textOf(k){const s=S[k];if(s.h)return s.h.replace(/<[^>]+>/g,' ');return k==='comm'?'morse radio alfabeto nato frequenze pmr cb mayday riparazione antenna segnali':'mappa gps punti coordinate acqua riparo nascondiglio organic maps osmand google maps offline'}
+function search(){
+  const q=document.getElementById('q').value.trim().toLowerCase(),r=document.getElementById('res'),t=document.getElementById('tiles');
+  if(q.length<2){r.innerHTML='';t.style.display='';return}
+  t.style.display='none';
+  const hits=order.filter(k=>(S[k].t+' '+textOf(k)).toLowerCase().includes(q));
+  r.innerHTML=hits.length?hits.map(k=>`<button class="tile" style="width:100%;margin:6px 0;text-align:left" onclick="go('${k}','${encodeURIComponent(q)}')">${S[k].i} ${S[k].t}</button>`).join(''):'<p>Nessun risultato.</p>';
+}
+function go(k,q){
+  if(k==='home'){location.hash='';render();return}
+  location.hash=k+(q?'/'+q:'');
+}
+function render(){
+  const [k,q]=location.hash.slice(1).split('/');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.n===k||(!k&&b.dataset.n==='home')));
+  if(!k||!S[k]){home();window.scrollTo(0,0);return}
+  document.getElementById('title').textContent=S[k].i+' '+S[k].t;
+  if(S[k].custom==='mappa')renderMappa(app);
+  else if(S[k].custom==='comm')renderComm(app);
+  else app.innerHTML=S[k].h;
+  if(q){const t=decodeURIComponent(q);app.querySelectorAll('details').forEach(d=>{if(d.textContent.toLowerCase().includes(t))d.open=true})}
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',render);
+render();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script>
+</body>
+</html>
